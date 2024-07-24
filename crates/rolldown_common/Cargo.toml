@@ -31,6 +31,7 @@ schemars           = { workspace = true, optional = true }
 serde              = { workspace = true, features = ["derive"], optional = true }
 serde_json         = { workspace = true }
 sugar_path         = { workspace = true }
+bitflags           = { workspace = true }
 
 [features]
 deserialize_bundler_options = ["dep:schemars", "dep:serde"]

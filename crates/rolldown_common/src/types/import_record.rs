@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use bitflags::bitflags;
 use rolldown_rstr::Rstr;
 
 use crate::{ModuleIdx, SymbolRef};
@@ -44,6 +45,56 @@ impl Display for ImportKind {
   }
 }
 
+bitflags! {
+    #[derive(Debug)]
+    pub struct ImportRecordMeta: u8 {
+        /// If it is `import * as ns from '...'` or `export * as ns from '...'`
+        const CONTAINS_IMPORT_STAR = 1 << 0;
+        /// If it is `import def from '...'`, `import { default as def }`, `export { default as def }` or `export { default } from '...'`
+        const CONTAINS_IMPORT_DEFAULT = 1 << 1;
+        /// If it is `import {} from '...'` or `import '...'`
+        const IS_PLAIN_IMPORT = 1 << 2;
+        const CONTAINS_DEFAULT_OR_STAR = Self::CONTAINS_IMPORT_STAR.bits() | Self::CONTAINS_IMPORT_DEFAULT.bits();
+    }
+}
+
+impl ImportRecordMeta {
+  #[inline]
+  pub fn is_plain_import(&self) -> bool {
+    self.contains(Self::IS_PLAIN_IMPORT)
+  }
+
+  #[inline]
+  pub fn contains_import_start(&self) -> bool {
+    self.contains(Self::CONTAINS_IMPORT_STAR)
+  }
+
+  #[inline]
+  pub fn contains_import_default(&self) -> bool {
+    self.contains(Self::CONTAINS_IMPORT_DEFAULT)
+  }
+
+  #[inline]
+  pub fn contains_import_default_or_star(&self) -> bool {
+    self.contains(Self::CONTAINS_DEFAULT_OR_STAR)
+  }
+
+  #[inline]
+  pub fn set_plain_import(&mut self) {
+    self.insert(Self::IS_PLAIN_IMPORT);
+  }
+
+  #[inline]
+  pub fn set_contains_import_star(&mut self) {
+    self.insert(Self::CONTAINS_IMPORT_STAR)
+  }
+
+  #[inline]
+  pub fn set_contains_import_default(&mut self) {
+    self.insert(Self::CONTAINS_IMPORT_DEFAULT)
+  }
+}
+
 /// See [ImportRecord] for more details.
 #[derive(Debug)]
 pub struct RawImportRecord {
@@ -52,24 +103,12 @@ pub struct RawImportRecord {
   pub kind: ImportKind,
   /// See [ImportRecord] for more details.
   pub namespace_ref: SymbolRef,
-  /// See [ImportRecord] for more details.
-  pub contains_import_star: bool,
-  /// See [ImportRecord] for more details.
-  pub contains_import_default: bool,
-  /// See [ImportRecord] for more details.
-  pub is_plain_import: bool,
+  pub meta: ImportRecordMeta,
 }
 
 impl RawImportRecord {
   pub fn new(specifier: Rstr, kind: ImportKind, namespace_ref: SymbolRef) -> Self {
-    Self {
-      module_request: specifier,
-      kind,
-      namespace_ref,
-      contains_import_default: false,
-      contains_import_star: false,
-      is_plain_import: false,
-    }
+    Self { module_request: specifier, kind, namespace_ref, meta: ImportRecordMeta::empty() }
   }
 
   pub fn into_import_record(self, resolved_module: ModuleIdx) -> ImportRecord {
@@ -78,9 +117,7 @@ impl RawImportRecord {
       resolved_module,
       kind: self.kind,
       namespace_ref: self.namespace_ref,
-      contains_import_star: self.contains_import_star,
-      contains_import_default: self.contains_import_default,
-      is_plain_import: self.is_plain_import,
+      meta: self.meta,
     }
   }
 }
@@ -94,10 +131,5 @@ pub struct ImportRecord {
   /// We will turn `import { foo } from './cjs.js'; console.log(foo);` to `var import_foo = require_cjs(); console.log(importcjs.foo)`;
   /// `namespace_ref` represent the potential `import_foo` in above example. It's useless if we imported n esm module.
   pub namespace_ref: SymbolRef,
-  /// If it is `import * as ns from '...'` or `export * as ns from '...'`
-  pub contains_import_star: bool,
-  /// If it is `import def from '...'`, `import { default as def }`, `export { default as def }` or `export { default } from '...'`
-  pub contains_import_default: bool,
-  /// If it is `import {} from '...'` or `import '...'`
-  pub is_plain_import: bool,
+  pub meta: ImportRecordMeta,
 }

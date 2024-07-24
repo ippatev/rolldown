@@ -279,7 +279,7 @@ impl<'me> AstScanner<'me> {
       span_imported,
     };
     if name_import.imported.is_default() {
-      self.result.import_records[record_id].contains_import_default = true;
+      self.result.import_records[record_id].meta.set_contains_import_default();
     }
     self.result.named_exports.insert(
       export_name.into(),
@@ -304,7 +304,7 @@ impl<'me> AstScanner<'me> {
       imported_as: generated_imported_as_ref,
       record_id,
     };
-    self.result.import_records[record_id].contains_import_star = true;
+    self.result.import_records[record_id].meta.set_contains_import_star();
     self.result.named_exports.insert(
       export_name.into(),
       LocalExport { referenced: generated_imported_as_ref, span: name_import.span_imported },
@@ -337,7 +337,9 @@ impl<'me> AstScanner<'me> {
       });
       self.result.imports.insert(decl.span, record_id);
       // `export {} from '...'`
-      self.result.import_records[record_id].is_plain_import = decl.specifiers.is_empty();
+      if decl.specifiers.is_empty() {
+        self.result.import_records[record_id].meta.set_plain_import();
+      }
     } else {
       decl.specifiers.iter().for_each(|spec| {
         self.add_local_export(
@@ -411,8 +413,9 @@ impl<'me> AstScanner<'me> {
     let rec_id = self.add_import_record(decl.source.value.as_str(), ImportKind::Import);
     self.result.imports.insert(decl.span, rec_id);
     // // `import '...'` or `import {} from '...'`
-    self.result.import_records[rec_id].is_plain_import =
-      decl.specifiers.as_ref().map_or(true, |s| s.is_empty());
+    if decl.specifiers.as_ref().map_or(true, |s| s.is_empty()) {
+      self.result.import_records[rec_id].meta.set_plain_import();
+    }
 
     let Some(specifiers) = &decl.specifiers else { return };
     specifiers.iter().for_each(|spec| match spec {
@@ -421,16 +424,16 @@ impl<'me> AstScanner<'me> {
         let imported = spec.imported.name();
         self.add_named_import(sym, imported.as_str(), rec_id, spec.imported.span());
         if imported == "default" {
-          self.result.import_records[rec_id].contains_import_default = true;
+          self.result.import_records[rec_id].meta.set_contains_import_default();
         }
       }
       oxc::ast::ast::ImportDeclarationSpecifier::ImportDefaultSpecifier(spec) => {
         self.add_named_import(spec.local.expect_symbol_id(), "default", rec_id, spec.span);
-        self.result.import_records[rec_id].contains_import_default = true;
+        self.result.import_records[rec_id].meta.set_contains_import_default();
       }
       oxc::ast::ast::ImportDeclarationSpecifier::ImportNamespaceSpecifier(spec) => {
         self.add_star_import(spec.local.expect_symbol_id(), rec_id, spec.span);
-        self.result.import_records[rec_id].contains_import_star = true;
+        self.result.import_records[rec_id].meta.set_contains_import_star();
       }
     });
   }

@@ -2,8 +2,8 @@ use std::{ptr::addr_of, sync::Mutex};
 
 use oxc::index::IndexVec;
 use rolldown_common::{
-  EntryPoint, ExportsKind, ImportKind, Module, ModuleIdx, ModuleTable, OutputFormat, StmtInfo,
-  SymbolRef, WrapKind,
+  EntryPoint, ExportsKind, ImportKind, ImportRecordMeta, Module, ModuleIdx, ModuleTable,
+  OutputFormat, StmtInfo, SymbolRef, WrapKind,
 };
 use rolldown_error::BuildDiagnostic;
 use rolldown_utils::{
@@ -181,7 +181,7 @@ impl<'a> LinkStage<'a> {
             if matches!(importee.exports_kind, ExportsKind::None) {
               if compat_mode {
                 // See https://github.com/evanw/esbuild/issues/447
-                if rec.contains_import_default || rec.contains_import_star {
+                if rec.meta.contains(ImportRecordMeta::CONTAINS_DEFAULT_OR_STAR) {
                   self.metas[importee.idx].wrap_kind = WrapKind::Cjs;
                   // SAFETY: If `importee` and `importer` are different, so this is safe. If they are the same, then behaviors are still expected.
                   unsafe {
@@ -286,7 +286,7 @@ impl<'a> LinkStage<'a> {
                 let is_reexport_all = match rec.kind {
                   ImportKind::Import => {
                     if matches!(self.input_options.format, OutputFormat::Cjs)
-                      && !rec.is_plain_import
+                      && !rec.meta.is_plain_import()
                     {
                       stmt_info
                         .referenced_symbols
