@@ -5,6 +5,7 @@ use napi_derive::napi;
 use rolldown_plugin::__inner::Pluginable;
 use rolldown_plugin_dynamic_import_vars::DynamicImportVarsPlugin;
 use rolldown_plugin_glob_import::{GlobImportPlugin, GlobImportPluginConfig};
+use rolldown_plugin_json::JsonPlugin;
 use rolldown_plugin_load_fallback::LoadFallbackPlugin;
 use rolldown_plugin_manifest::{ManifestPlugin, ManifestPluginConfig};
 use rolldown_plugin_module_preload_polyfill::ModulePreloadPolyfillPlugin;
@@ -45,6 +46,7 @@ pub enum BindingBuiltinPluginName {
   ManifestPlugin,
   LoadFallbackPlugin,
   TransformPlugin,
+  JsonPlugin,
 }
 
 #[napi_derive::napi(object)]
@@ -85,6 +87,14 @@ impl From<BindingManifestPluginConfig> for ManifestPluginConfig {
 #[serde(rename_all = "camelCase")]
 pub struct BindingModulePreloadPolyfillPluginConfig {
   pub skip: Option<bool>,
+}
+
+#[napi_derive::napi(object)]
+#[derive(Debug, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct BindingJsonPluginConfig {
+  pub stringify: Option<bool>,
+  pub is_build: Option<bool>,
 }
 
 #[napi_derive::napi(object)]
@@ -166,6 +176,18 @@ impl TryFrom<BindingBuiltinPlugin> for Arc<dyn Pluginable> {
           TransformPlugin::default()
         };
         Arc::new(plugin)
+      }
+
+      BindingBuiltinPluginName::JsonPlugin => {
+        let config = if let Some(options) = plugin.options {
+          BindingJsonPluginConfig::from_unknown(options)?
+        } else {
+          BindingJsonPluginConfig::default()
+        };
+        Arc::new(JsonPlugin {
+          stringify: config.stringify.unwrap_or_default(),
+          is_build: config.is_build.unwrap_or_default(),
+        })
       }
     })
   }
