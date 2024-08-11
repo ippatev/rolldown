@@ -117,7 +117,8 @@ export declare enum BindingBuiltinPluginName {
   ModulePreloadPolyfillPlugin = 3,
   ManifestPlugin = 4,
   LoadFallbackPlugin = 5,
-  TransformPlugin = 6
+  TransformPlugin = 6,
+  JsonPlugin = 7
 }
 
 export interface BindingEmittedAsset {
@@ -185,6 +186,11 @@ export interface BindingInputOptions {
   treeshake?: BindingTreeshake
   moduleTypes?: Record<string, string>
   define?: Array<[string, string]>
+}
+
+export interface BindingJsonPluginConfig {
+  stringify?: boolean
+  isBuild?: boolean
 }
 
 export interface BindingJsonSourcemap {
