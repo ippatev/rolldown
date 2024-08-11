@@ -8,6 +8,7 @@ import {
   wasmPlugin,
   loadFallbackPlugin,
   transformPlugin,
+  jsonPlugin
 } from './plugin/builtin-plugin'
 import { transform } from './binding'
 
@@ -22,4 +23,5 @@ export {
   manifestPlugin,
   loadFallbackPlugin,
   transformPlugin,
+  jsonPlugin
 }
